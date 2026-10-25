@@ -1,0 +1,616 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pixel Reveal</title>
+<style>
+  :root { color-scheme: light dark; font-family: system-ui, sans-serif; }
+  * { box-sizing: border-box; }
+  body { margin: 0; padding: 20px; background: Canvas; color: CanvasText; }
+  main { max-width: 1050px; margin: 0 auto; }
+  h1 { margin-top: 0; }
+  .controls {
+    display: flex; flex-wrap: wrap; align-items: end; gap: 14px;
+    padding: 16px; border: 1px solid color-mix(in srgb, CanvasText 20%, transparent);
+    border-radius: 12px; margin-bottom: 18px;
+  }
+  .control { display: flex; flex-direction: column; gap: 5px; min-width: 105px; }
+  label { font-size: .9rem; }
+  input, button { font: inherit; }
+  input[type="number"] { width: 100px; padding: 7px; }
+  input[type="file"] { max-width: 100%; }
+  input[type="range"] { width: 150px; }
+  button {
+    border: 1px solid color-mix(in srgb, CanvasText 25%, transparent);
+    background: ButtonFace; color: ButtonText; padding: 8px 12px;
+    border-radius: 8px; cursor: pointer;
+  }
+  button:disabled { opacity: .45; cursor: not-allowed; }
+  .status { margin-left: auto; font-size: .95rem; }
+  .equation-panel {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 12px;
+    padding: 16px; margin: 0 0 18px; border: 1px solid color-mix(in srgb, CanvasText 22%, transparent);
+    border-radius: 12px;
+  }
+  .equation { font-size: clamp(1.5rem, 4vw, 2.3rem); font-weight: 700; letter-spacing: .02em; }
+  #answer { width: 110px; padding: 9px; font-size: 1.1rem; }
+  #feedback { min-width: 120px; font-weight: 700; }
+  #feedback.correct { color: #16803d; }
+  #feedback.incorrect { color: #c83232; }
+  .stage {
+    position: relative; width: 100%; overflow: hidden; background: #222;
+    border-radius: 10px; line-height: 0; min-height: 120px;
+  }
+  #original { display: block; width: 100%; height: auto; }
+  #overlay { display: none; position: absolute; inset: 0; width: 100%; height: 100%; }
+  #grid {
+    position: absolute; inset: 0; display: grid;
+  }
+  .mode-picker { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 16px; margin: 24px 0; }
+  .mode-card { border: 1px solid color-mix(in srgb, CanvasText 22%, transparent); border-radius: 12px; padding: 20px; }
+  .mode-card h2 { margin-top: 0; }
+  .mode-card button { margin-top: 8px; }
+  .topbar { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
+  .mode-badge { font-size: .9rem; opacity: .75; }
+  [hidden] { display: none !important; }
+  .cell {
+    min-width: 0; min-height: 0; padding: 0; border-radius: 0;
+    border: 0; background: transparent;
+    opacity: 1; transition: opacity 500ms ease;
+    touch-action: manipulation;
+  }
+  .cell:hover:not(.revealed) { background: rgba(255,255,255,.12); }
+  .cell.revealed { opacity: 0; pointer-events: none; }
+  .hint { margin: 12px 0 0; color: color-mix(in srgb, CanvasText 72%, transparent); line-height: 1.45; }
+  .empty {
+    min-height: 260px; display: grid; place-items: center; text-align: center;
+    border: 2px dashed color-mix(in srgb, CanvasText 25%, transparent);
+    border-radius: 12px; padding: 24px; line-height: 1.4;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .cell { transition-duration: 0ms; }
+  }
+</style>
+</head>
+<body>
+<main>
+  <section id="modePickerPage">
+    <h1>Pixel Reveal</h1>
+    <p>Choose how students will uncover the picture.</p>
+    <div class="mode-picker">
+      <article class="mode-card">
+        <h2>Mode 1: Reveal sections</h2>
+        <p>The picture starts pixelated. Each correct answer reveals one grid cell, or a random batch of cells.</p>
+        <button id="chooseMode1" type="button">Choose Mode 1</button>
+      </article>
+      <article class="mode-card">
+        <h2>Mode 2: Reduce pixelation</h2>
+        <p>The whole picture starts heavily pixelated. Each correct answer makes the entire picture clearer. Choose how many correct answers it takes to reveal the picture fully.</p>
+        <button id="chooseMode2" type="button">Choose Mode 2</button>
+      </article>
+    </div>
+  </section>
+
+  <section id="gamePage" hidden>
+    <div class="topbar">
+      <h1>Pixel Reveal</h1>
+      <div><span id="modeBadge" class="mode-badge"></span> <button id="changeMode" type="button">Back to mode selection</button></div>
+    </div>
+    <p id="introText">Upload a picture, then solve each two-step equation to reveal part of it.</p>
+
+  <section class="controls" aria-label="Image and reveal controls">
+    <div class="control">
+      <label for="file">Picture from device</label>
+      <input id="file" type="file" accept="image/*">
+    </div>
+    <div class="control" style="min-width: 240px; flex: 1">
+      <label for="imageUrlInput">Or picture from a link</label>
+      <input id="imageUrlInput" type="url" placeholder="https://example.com/picture.jpg" style="width: 100%; padding: 7px">
+      <button id="loadUrlButton" type="button">Load image link</button>
+    </div>
+    <div class="control mode1-control">
+      <label for="columns">Grid columns</label>
+      <input id="columns" type="number" min="1" max="40" value="8">
+    </div>
+    <div class="control mode1-control">
+      <label for="rows">Grid rows</label>
+      <input id="rows" type="number" min="1" max="40" value="6">
+    </div>
+    <div class="control mode1-control">
+      <label for="pixelSize">Mosaic pixel size: <span id="pixelLabel">18</span></label>
+      <input id="pixelSize" type="range" min="4" max="60" value="18">
+    </div>
+    <div class="control mode1-control">
+      <label><input id="randomMode" type="checkbox" disabled> Random batch mode</label>
+      <label for="randomCount" id="randomCountLabel" hidden>Cells per batch</label>
+      <input id="randomCount" type="number" min="1" max="1600" value="5" hidden>
+    </div>
+    <div class="control mode2-control" hidden>
+      <label for="stepCount">Correct answers to reveal fully</label>
+      <input id="stepCount" type="number" min="1" max="100" value="10">
+    </div>
+    <button id="reset" disabled>Reset reveals</button>
+    <button id="revealAll" disabled>Reveal all</button>
+    <div class="status" id="status" aria-live="polite">No picture loaded</div>
+  </section>
+
+  <section id="equationPanel" class="equation-panel" hidden aria-label="Math challenge">
+    <div>
+      <div><strong>Solve for x</strong></div>
+      <div class="equation" id="equation">3x + 5 = 20</div>
+    </div>
+    <form id="answerForm">
+      <label for="answer">x = </label>
+      <input id="answer" type="number" step="1" inputmode="numeric" autocomplete="off" required>
+      <button id="submitAnswer" type="button">Submit answer</button>
+    </form>
+    <div id="feedback" aria-live="polite"></div>
+  </section>
+
+  <div id="empty" class="empty">
+    <div><strong>Choose a picture to begin.</strong><br>The image stays on your device; it is not uploaded to a server.</div>
+  </div>
+
+  <div class="stage" id="stage" hidden>
+    <img id="original" alt="Uploaded picture">
+    <canvas id="overlay" aria-hidden="true"></canvas>
+    <div id="grid" aria-label="Image reveal overlay"></div>
+  </div>
+
+  <p class="hint" id="hint">Solve the equation shown above the picture. A correct answer reveals one randomly selected section, or the number of scattered sections set in Random batch mode. Incorrect answers do not reveal anything. Changing grid size or mosaic pixel size updates the picture automatically and resets its reveals. For a picture link, use a direct image URL; some image hosts block use from other websites, so uploading the file is the fallback.</p>
+  </section>
+</main>
+
+<script>
+(() => {
+  const modePickerPage = document.getElementById('modePickerPage');
+  const gamePage = document.getElementById('gamePage');
+  const chooseMode1 = document.getElementById('chooseMode1');
+  const chooseMode2 = document.getElementById('chooseMode2');
+  const changeModeButton = document.getElementById('changeMode');
+  const modeBadge = document.getElementById('modeBadge');
+  const introText = document.getElementById('introText');
+  const hint = document.getElementById('hint');
+  const stepCountInput = document.getElementById('stepCount');
+  const mode1Controls = [...document.querySelectorAll('.mode1-control')];
+  const mode2Controls = [...document.querySelectorAll('.mode2-control')];
+  const fileInput = document.getElementById('file');
+  const imageUrlInput = document.getElementById('imageUrlInput');
+  const loadUrlButton = document.getElementById('loadUrlButton');
+  const columnsInput = document.getElementById('columns');
+  const rowsInput = document.getElementById('rows');
+  const pixelInput = document.getElementById('pixelSize');
+  const pixelLabel = document.getElementById('pixelLabel');
+  const randomMode = document.getElementById('randomMode');
+  const randomCountInput = document.getElementById('randomCount');
+  const randomCountLabel = document.getElementById('randomCountLabel');
+  const resetButton = document.getElementById('reset');
+  const revealAllButton = document.getElementById('revealAll');
+  const status = document.getElementById('status');
+  const empty = document.getElementById('empty');
+  const stage = document.getElementById('stage');
+  const original = document.getElementById('original');
+  const overlay = document.getElementById('overlay');
+  const grid = document.getElementById('grid');
+  const equationPanel = document.getElementById('equationPanel');
+  const equation = document.getElementById('equation');
+  const answerForm = document.getElementById('answerForm');
+  const answerInput = document.getElementById('answer');
+  const submitAnswer = document.getElementById('submitAnswer');
+  const feedback = document.getElementById('feedback');
+  const ctx = overlay.getContext('2d');
+  let imageUrl = null;
+  let remoteOriginalSrc = null;
+  let loaded = false;
+  let correctAnswer = null;
+  let locked = false;
+  let currentMode = 1;
+  let totalSteps = 10;
+  let completedSteps = 0;
+  const MAX_MOSAIC_SIZE = 60;
+
+  let rebuildTimer = null;
+
+  function selectMode(mode) {
+    currentMode = mode;
+    modePickerPage.hidden = true;
+    gamePage.hidden = false;
+    modeBadge.textContent = mode === 1 ? 'Mode 1 · Reveal sections' : 'Mode 2 · Reduce pixelation';
+    introText.textContent = mode === 1
+      ? 'Upload a picture, then solve each two-step equation to reveal sections.'
+      : 'Upload a picture, then solve each two-step equation to make the whole picture clearer.';
+    hint.textContent = mode === 1
+      ? 'A correct answer reveals one randomly selected section, or a batch of scattered sections if Random batch mode is on. Incorrect answers do not reveal anything. Changing grid size or mosaic pixel size resets the reveals.'
+      : 'The picture starts at maximum pixelation. Each correct answer reduces the pixel size by one step. Incorrect answers do not change the image. The final step displays the original image without a mosaic.';
+    mode1Controls.forEach(el => el.hidden = mode !== 1);
+    mode2Controls.forEach(el => el.hidden = mode !== 2);
+    grid.style.display = mode === 1 ? 'grid' : 'none';
+    overlay.style.display = mode === 2 ? 'block' : 'none';
+    if (loaded) rebuild();
+  }
+
+  chooseMode1.addEventListener('click', () => selectMode(1));
+  chooseMode2.addEventListener('click', () => selectMode(2));
+  changeModeButton.addEventListener('click', () => {
+    gamePage.hidden = true;
+    modePickerPage.hidden = false;
+  });
+  stepCountInput.addEventListener('change', () => {
+    boundedInteger(stepCountInput, 1, 100);
+    if (loaded && currentMode === 2) rebuild();
+  });
+
+  function scheduleLiveRebuild() {
+    if (!loaded) return;
+    clearTimeout(rebuildTimer);
+    rebuildTimer = setTimeout(() => {
+      // While a number is being edited, wait until it is a valid integer in range.
+      const columns = Number(columnsInput.value);
+      const rows = Number(rowsInput.value);
+      if (!Number.isInteger(columns) || columns < 1 || columns > 40 ||
+          !Number.isInteger(rows) || rows < 1 || rows > 40) return;
+      rebuild();
+    }, 180);
+  }
+
+  pixelInput.addEventListener('input', () => {
+    pixelLabel.textContent = pixelInput.value;
+    scheduleLiveRebuild();
+  });
+
+  columnsInput.addEventListener('input', scheduleLiveRebuild);
+  rowsInput.addEventListener('input', scheduleLiveRebuild);
+
+  // Clamp typed row/column values to the supported range when editing finishes.
+  [columnsInput, rowsInput].forEach(input => {
+    input.addEventListener('change', () => {
+      boundedInteger(input, 1, 40);
+      scheduleLiveRebuild();
+    });
+  });
+
+  function boundedInteger(input, min, max) {
+    const n = Number.parseInt(input.value, 10);
+    const safe = Number.isFinite(n) ? Math.max(min, Math.min(max, n)) : min;
+    input.value = safe;
+    return safe;
+  }
+
+  function loadImageSource(src, isLocalFile = false, retryingThumbnail = false) {
+    loaded = false;
+    status.textContent = 'Loading picture…';
+    original.onload = () => {
+      loaded = true;
+      empty.hidden = true;
+      stage.hidden = false;
+      equationPanel.hidden = false;
+      resetButton.disabled = false;
+      revealAllButton.disabled = false;
+      randomMode.disabled = false;
+      rebuild();
+      answerInput.focus();
+    };
+    original.onerror = () => {
+      loaded = false;
+      // Wikimedia's original files can be enormous (some are tens of megabytes).
+      // Retry those as a smaller thumbnail to avoid browser memory/load failures.
+      if (!isLocalFile && !retryingThumbnail) {
+        const thumb = makeWikimediaThumbnail(src);
+        if (thumb && thumb !== src) {
+          status.textContent = 'The Wikimedia image URL did not load; trying its smaller preview…';
+          loadImageSource(thumb, false, true);
+          return;
+        }
+      }
+      // If the automatically generated Wikimedia thumbnail fails, try the exact
+      // original URL once. This avoids getting stuck on a bad thumbnail path.
+      if (!isLocalFile && retryingThumbnail && remoteOriginalSrc && src !== remoteOriginalSrc) {
+        const originalToTry = remoteOriginalSrc;
+        remoteOriginalSrc = null;
+        status.textContent = 'The preview failed; trying the original image URL…';
+        loadImageSource(originalToTry, false, true);
+        return;
+      }
+      status.textContent = isLocalFile
+        ? 'That image could not be opened.'
+        : 'The browser could not load this image. The URL may be invalid, the host may block cross-origin image use, or the server may be unavailable. For the mosaic to work, the host must allow cross-origin canvas access; try uploading the image file instead.';
+    };
+    // Remote images must allow cross-origin canvas use for the mosaic to work.
+    // Set this before src; otherwise canvas export may be blocked by the browser.
+    if (isLocalFile) {
+      original.removeAttribute('crossorigin');
+    } else {
+      original.crossOrigin = 'anonymous';
+    }
+    original.src = src;
+  }
+
+  fileInput.addEventListener('change', () => {
+    const file = fileInput.files && fileInput.files[0];
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      status.textContent = 'Please select an image file.';
+      return;
+    }
+    if (imageUrl) URL.revokeObjectURL(imageUrl);
+    imageUrl = URL.createObjectURL(file);
+    loadImageSource(imageUrl, true);
+  });
+
+  function makeWikimediaThumbnail(src) {
+    try {
+      const url = new URL(src);
+      if (url.hostname !== 'upload.wikimedia.org') return null;
+      const marker = '/wikipedia/commons/';
+      const index = url.pathname.indexOf(marker);
+      if (index < 0) return null;
+      const relative = url.pathname.slice(index + marker.length);
+      // Already a thumbnail URL, or an unexpected path: do not rewrite it.
+      if (relative.startsWith('thumb/')) return null;
+      const filename = relative.slice(relative.lastIndexOf('/') + 1);
+      if (!/\.(jpe?g|png|gif|webp|tiff?)$/i.test(filename)) return null;
+      url.pathname = marker + 'thumb/' + relative + '/1200px-' + filename;
+      url.search = '';
+      url.hash = '';
+      return url.href;
+    } catch {
+      return null;
+    }
+  }
+
+  function loadImageFromLink() {
+    const link = imageUrlInput.value.trim();
+    if (!link) {
+      status.textContent = 'Paste an image link first.';
+      imageUrlInput.focus();
+      return;
+    }
+    let parsed;
+    try {
+      parsed = new URL(link);
+    } catch {
+      status.textContent = 'Enter a valid image URL beginning with https:// or http://.';
+      return;
+    }
+    if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') {
+      status.textContent = 'The image link must begin with https:// or http://.';
+      return;
+    }
+    if (imageUrl) {
+      URL.revokeObjectURL(imageUrl);
+      imageUrl = null;
+    }
+    const thumb = makeWikimediaThumbnail(parsed.href);
+    remoteOriginalSrc = parsed.href;
+    // Try a smaller Wikimedia thumbnail first when one can be constructed.
+    // If it fails, loadImageSource now also tries the exact original URL once.
+    loadImageSource(thumb || parsed.href, false, Boolean(thumb));
+  }
+
+  loadUrlButton.addEventListener('click', loadImageFromLink);
+  imageUrlInput.addEventListener('keydown', event => {
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      loadImageFromLink();
+    }
+  });
+
+  function drawMosaic() {
+    const w = original.naturalWidth;
+    const h = original.naturalHeight;
+    if (!w || !h) return;
+
+    // Use a small temporary canvas to reduce the image, then enlarge it with
+    // smoothing disabled to create a blocky mosaic overlay.
+    let pixelSize;
+    if (currentMode === 2) {
+      totalSteps = boundedInteger(stepCountInput, 1, 100);
+      pixelSize = completedSteps >= totalSteps ? 0 : MAX_MOSAIC_SIZE * (1 - completedSteps / totalSteps);
+    } else {
+      pixelSize = Number(pixelInput.value);
+    }
+
+    overlay.width = w;
+    overlay.height = h;
+    ctx.imageSmoothingEnabled = false;
+    ctx.clearRect(0, 0, w, h);
+    if (currentMode === 2 && pixelSize <= 0) {
+      // A fully revealed image has no mosaic overlay.
+      return;
+    }
+    const small = document.createElement('canvas');
+    small.width = Math.max(1, Math.ceil(w / Math.max(1, pixelSize)));
+    small.height = Math.max(1, Math.ceil(h / Math.max(1, pixelSize)));
+    const smallCtx = small.getContext('2d', { willReadFrequently: true });
+    smallCtx.drawImage(original, 0, 0, small.width, small.height);
+    ctx.drawImage(small, 0, 0, small.width, small.height, 0, 0, w, h);
+  }
+
+  function buildGrid() {
+    const columns = boundedInteger(columnsInput, 1, 40);
+    const rows = boundedInteger(rowsInput, 1, 40);
+    grid.replaceChildren();
+    grid.style.gridTemplateColumns = `repeat(${columns}, minmax(0, 1fr))`;
+    grid.style.gridTemplateRows = `repeat(${rows}, minmax(0, 1fr))`;
+
+    const fragment = document.createDocumentFragment();
+    const mosaicUrl = overlay.toDataURL('image/png');
+    for (let i = 0; i < rows * columns; i++) {
+      const row = Math.floor(i / columns);
+      const col = i % columns;
+      const cell = document.createElement('div');
+      cell.className = 'cell';
+      cell.setAttribute('aria-hidden', 'true');
+      cell.style.backgroundImage = `url("${mosaicUrl}")`;
+      cell.style.backgroundSize = `${columns * 100}% ${rows * 100}%`;
+      const xPosition = columns === 1 ? 0 : (col / (columns - 1)) * 100;
+      const yPosition = rows === 1 ? 0 : (row / (rows - 1)) * 100;
+      cell.style.backgroundPosition = `${xPosition}% ${yPosition}%`;
+      cell.style.backgroundRepeat = 'no-repeat';
+      fragment.appendChild(cell);
+    }
+    grid.appendChild(fragment);
+    updateStatus();
+  }
+
+  function rebuild() {
+    if (!loaded) return;
+    if (currentMode === 2) {
+      totalSteps = boundedInteger(stepCountInput, 1, 100);
+      completedSteps = 0;
+    }
+    drawMosaic();
+    buildGrid();
+    grid.style.display = currentMode === 1 ? 'grid' : 'none';
+    overlay.style.display = currentMode === 2 ? 'block' : 'none';
+    makeQuestion();
+  }
+
+  function updateStatus() {
+    if (currentMode === 2) {
+      status.textContent = `${completedSteps} / ${totalSteps} steps complete`;
+      return;
+    }
+    const cells = [...grid.children];
+    const revealed = cells.filter(cell => cell.classList.contains('revealed')).length;
+    status.textContent = `${revealed} / ${cells.length} sections revealed`;
+  }
+
+  function revealRandomCells() {
+    const unrevealed = [...grid.children].filter(cell => !cell.classList.contains('revealed'));
+    if (!unrevealed.length) {
+      feedback.textContent = 'The picture is fully revealed!';
+      feedback.className = '';
+      updateStatus();
+      return 0;
+    }
+    const requested = randomMode.checked
+      ? boundedInteger(randomCountInput, 1, Math.max(1, grid.children.length))
+      : 1;
+    // Fisher-Yates shuffle selects scattered cells without repeats.
+    for (let i = unrevealed.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [unrevealed[i], unrevealed[j]] = [unrevealed[j], unrevealed[i]];
+    }
+    const selected = unrevealed.slice(0, Math.min(requested, unrevealed.length));
+    selected.forEach(cell => cell.classList.add('revealed'));
+    updateStatus();
+    return selected.length;
+  }
+
+  function makeQuestion() {
+    // Generate ax + b = c with integer x, a nonzero integer coefficient,
+    // and a result that stays an integer for every generated question.
+    const a = Math.floor(Math.random() * 8) + 2; // 2 through 9
+    const x = Math.floor(Math.random() * 21) - 10; // -10 through 10
+    let b = Math.floor(Math.random() * 25) - 12; // -12 through 12
+    if (b === 0) b = 5;
+    const c = a * x + b;
+    const bText = b > 0 ? ` + ${b}` : ` - ${Math.abs(b)}`;
+    equation.textContent = `${a}x${bText} = ${c}`;
+    correctAnswer = x;
+    answerInput.value = '';
+    answerInput.disabled = false;
+    submitAnswer.disabled = false;
+    feedback.textContent = '';
+    feedback.className = '';
+    locked = false;
+  }
+
+  function checkAnswer() {
+    if (locked || !loaded) return;
+    const raw = answerInput.value.trim();
+    if (raw === '' || !Number.isInteger(Number(raw))) {
+      feedback.textContent = 'Enter an integer.';
+      feedback.className = 'incorrect';
+      answerInput.focus();
+      return;
+    }
+    if (Number(raw) !== correctAnswer) {
+      feedback.textContent = 'Incorrect. Try again.';
+      feedback.className = 'incorrect';
+      answerInput.select();
+      return;
+    }
+
+    locked = true;
+    answerInput.disabled = true;
+    submitAnswer.disabled = true;
+    let changed = false;
+    if (currentMode === 1) {
+      changed = revealRandomCells() > 0;
+    } else {
+      totalSteps = boundedInteger(stepCountInput, 1, 100);
+      if (completedSteps < totalSteps) {
+        completedSteps++;
+        changed = true;
+        drawMosaic();
+        updateStatus();
+      }
+    }
+    feedback.textContent = changed ? 'Correct!' : 'Correct, but the picture is fully revealed.';
+    feedback.className = 'correct';
+    if (changed && (currentMode !== 2 || completedSteps < totalSteps)) {
+      window.setTimeout(() => {
+        makeQuestion();
+        answerInput.focus();
+      }, 900);
+    } else if (currentMode === 2 && completedSteps >= totalSteps) {
+      feedback.textContent = 'Correct! The picture is fully revealed.';
+      feedback.className = 'correct';
+    }
+  }
+
+  // Explicit click handler for the button, plus Enter-key form submission.
+  submitAnswer.addEventListener('click', checkAnswer);
+  answerInput.addEventListener('keydown', event => {
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      checkAnswer();
+    }
+  });
+  answerForm.addEventListener('submit', event => {
+    event.preventDefault();
+    checkAnswer();
+  });
+
+  randomMode.addEventListener('change', () => {
+    const enabled = randomMode.checked;
+    randomCountInput.hidden = !enabled;
+    randomCountLabel.hidden = !enabled;
+    // Batch mode changes how many sections a correct answer reveals.
+  });
+
+  resetButton.addEventListener('click', () => {
+    for (const cell of grid.children) cell.classList.remove('revealed');
+    if (currentMode === 2) {
+      completedSteps = 0;
+      drawMosaic();
+    }
+    updateStatus();
+    makeQuestion();
+  });
+
+  revealAllButton.addEventListener('click', () => {
+    for (const cell of grid.children) cell.classList.add('revealed');
+    if (currentMode === 2) {
+      completedSteps = totalSteps;
+      drawMosaic();
+    }
+    updateStatus();
+    feedback.textContent = 'The picture is fully revealed!';
+    feedback.className = '';
+    answerInput.disabled = true;
+    submitAnswer.disabled = true;
+  });
+
+  // Redraw at the image's intrinsic resolution; CSS scales the image and canvas
+  // together, so the overlay stays aligned as the window changes size.
+  window.addEventListener('beforeunload', () => {
+    if (imageUrl) URL.revokeObjectURL(imageUrl);
+  });
+})();
+</script>
+</body>
+</html>
