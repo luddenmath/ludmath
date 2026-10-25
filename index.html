@@ -1,0 +1,172 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#101827">
+  <meta name="description" content="LudMath — learn, understand, discover through interactive learning games.">
+  <title>LudMath — Learn, Understand, Discover</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #0b1020;
+      --panel: rgba(255,255,255,.055);
+      --panel-hover: rgba(255,255,255,.09);
+      --text: #f4f7ff;
+      --muted: #a9b4ca;
+      --line: rgba(255,255,255,.12);
+      --purple: #a78bfa;
+      --cyan: #67e8f9;
+      --green: #86efac;
+      --radius: 22px;
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background:
+        radial-gradient(ellipse at 12% 8%, rgba(124,58,237,.2), transparent 36rem),
+        radial-gradient(ellipse at 90% 35%, rgba(6,182,212,.13), transparent 34rem),
+        var(--bg);
+      color: var(--text);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      line-height: 1.6;
+    }
+    a { color: inherit; }
+    .wrap { width: min(1120px, calc(100% - 40px)); margin: 0 auto; }
+    .topbar { display: flex; align-items: center; justify-content: space-between; gap: 24px; padding: 26px 0; }
+    .brand { display: inline-flex; align-items: center; gap: 11px; text-decoration: none; font-weight: 850; letter-spacing: -.045em; font-size: 1.25rem; }
+    .brand-mark { display: grid; place-items: center; width: 38px; height: 38px; border-radius: 12px; color: #0b1020; background: linear-gradient(135deg, var(--cyan), var(--purple)); font-weight: 950; letter-spacing: -.08em; }
+    .nav { display: flex; gap: 25px; align-items: center; }
+    .nav a { text-decoration: none; color: var(--muted); font-size: .93rem; transition: color .2s ease; }
+    .nav a:hover { color: var(--text); }
+    .nav .nav-cta { color: var(--text); border: 1px solid var(--line); padding: 9px 15px; border-radius: 999px; }
+    .hero { padding: clamp(66px, 10vw, 128px) 0 78px; max-width: 850px; }
+    .eyebrow { display: inline-flex; align-items: center; gap: 9px; color: var(--cyan); text-transform: uppercase; letter-spacing: .16em; font-size: .76rem; font-weight: 800; }
+    .eyebrow::before { content: ""; width: 24px; height: 2px; background: currentColor; }
+    h1 { margin: 18px 0 22px; font-size: clamp(3rem, 8vw, 6.5rem); line-height: .99; letter-spacing: -.075em; font-weight: 850; }
+    h1 .gradient { display: block; color: transparent; background: linear-gradient(95deg, var(--cyan), #c4b5fd 58%, #f0abfc); background-clip: text; -webkit-background-clip: text; }
+    .intro { max-width: 610px; margin: 0; color: var(--muted); font-size: clamp(1.05rem, 2vw, 1.2rem); }
+    .hero-actions { display: flex; flex-wrap: wrap; gap: 13px; margin-top: 30px; }
+    .button { display: inline-flex; justify-content: center; align-items: center; gap: 9px; min-height: 48px; padding: 12px 19px; border-radius: 13px; text-decoration: none; font-weight: 750; border: 1px solid transparent; transition: transform .2s ease, background .2s ease, border-color .2s ease; }
+    .button:hover { transform: translateY(-2px); }
+    .button-primary { background: var(--text); color: #101827; }
+    .button-secondary { border-color: var(--line); color: var(--text); background: rgba(255,255,255,.025); }
+    .section-heading { display: flex; align-items: end; justify-content: space-between; gap: 24px; margin-bottom: 22px; }
+    .section-heading h2 { margin: 0; font-size: clamp(1.65rem, 3vw, 2.2rem); letter-spacing: -.05em; }
+    .section-heading p { margin: 0; color: var(--muted); font-size: .95rem; }
+    .projects { padding: 10px 0 100px; }
+    .card-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 17px; }
+    .project-card { position: relative; display: flex; flex-direction: column; min-height: 270px; padding: 25px; overflow: hidden; border: 1px solid var(--line); border-radius: var(--radius); background: var(--panel); text-decoration: none; transition: transform .22s ease, border-color .22s ease, background .22s ease; }
+    .project-card:hover { transform: translateY(-5px); border-color: rgba(167,139,250,.55); background: var(--panel-hover); }
+    .project-card::after { content: ""; position: absolute; width: 130px; height: 130px; right: -55px; top: -55px; border-radius: 50%; background: var(--glow, rgba(167,139,250,.16)); filter: blur(2px); pointer-events: none; }
+    .project-icon { display: grid; place-items: center; width: 48px; height: 48px; border-radius: 15px; margin-bottom: 27px; color: var(--icon-color, var(--purple)); background: var(--icon-bg, rgba(167,139,250,.13)); border: 1px solid rgba(255,255,255,.07); font-size: 1.45rem; font-weight: 800; }
+    .project-card h3 { margin: 0 0 8px; font-size: 1.35rem; letter-spacing: -.04em; }
+    .project-card p { margin: 0; color: var(--muted); font-size: .96rem; }
+    .card-link { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: auto; padding-top: 24px; font-size: .9rem; font-weight: 750; }
+    .arrow { font-size: 1.2rem; transition: transform .2s ease; }
+    .project-card:hover .arrow { transform: translateX(4px); }
+    .coming-note { margin: 18px 0 0; color: #8491aa; font-size: .84rem; }
+    .bottom-band { margin-bottom: 42px; padding: 28px 30px; display: flex; justify-content: space-between; align-items: center; gap: 24px; border: 1px solid var(--line); border-radius: var(--radius); background: linear-gradient(105deg, rgba(103,232,249,.08), rgba(167,139,250,.08)); }
+    .bottom-band h2 { margin: 0 0 4px; font-size: 1.25rem; letter-spacing: -.035em; }
+    .bottom-band p { margin: 0; color: var(--muted); }
+    footer { border-top: 1px solid var(--line); padding: 23px 0 30px; color: #8491aa; font-size: .85rem; }
+    .footer-inner { display: flex; justify-content: space-between; gap: 18px; flex-wrap: wrap; }
+    @media (max-width: 760px) {
+      .card-grid { grid-template-columns: 1fr; }
+      .project-card { min-height: 225px; }
+      .section-heading { align-items: start; flex-direction: column; gap: 6px; }
+      .bottom-band { align-items: start; flex-direction: column; }
+    }
+    @media (max-width: 520px) {
+      .wrap { width: min(100% - 28px, 1120px); }
+      .topbar { padding: 18px 0; }
+      .nav { gap: 12px; }
+      .nav a:not(.nav-cta) { display: none; }
+      .hero { padding-top: 76px; }
+      .project-card { padding: 22px; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { scroll-behavior: auto !important; transition: none !important; }
+    }
+  </style>
+</head>
+<body>
+  <header class="wrap topbar">
+    <a class="brand" href="/" aria-label="LudMath home">
+      <span class="brand-mark" aria-hidden="true">L</span>
+      <span>LudMath</span>
+    </a>
+    <nav class="nav" aria-label="Main navigation">
+      <a href="#projects">Explore</a>
+      <a href="#about">About</a>
+      <a class="nav-cta" href="#projects">Find a game <span aria-hidden="true">↗</span></a>
+    </nav>
+  </header>
+
+  <main>
+    <section class="wrap hero" id="about">
+      <div class="eyebrow">Learning by doing</div>
+      <h1>Learn. Understand.<span class="gradient">Discover.</span></h1>
+      <p class="intro">Tools and games that make learning active. Practice a skill, test what you know, and see what you can figure out next.</p>
+      <div class="hero-actions">
+        <a class="button button-primary" href="#projects">Explore the games <span aria-hidden="true">↓</span></a>
+        <a class="button button-secondary" href="#about">What is LudMath?</a>
+      </div>
+    </section>
+
+    <section class="wrap projects" id="projects" aria-labelledby="projects-title">
+      <div class="section-heading">
+        <div>
+          <div class="eyebrow">The collection</div>
+          <h2 id="projects-title">Pick your next challenge.</h2>
+        </div>
+        <p>Quick to start. Built for learning.</p>
+      </div>
+
+      <div class="card-grid">
+        <a class="project-card" href="/zero-out/" style="--glow:rgba(103,232,249,.17);--icon-color:#67e8f9;--icon-bg:rgba(103,232,249,.1)">
+          <span class="project-icon" aria-hidden="true">±</span>
+          <h3>Zero Out</h3>
+          <p>Make every answer count. Use strategy and a little number sense to get as close to zero as you can.</p>
+          <span class="card-link">Explore Zero Out <span class="arrow" aria-hidden="true">→</span></span>
+        </a>
+
+        <a class="project-card" href="/math-facts/" style="--glow:rgba(134,239,172,.16);--icon-color:#86efac;--icon-bg:rgba(134,239,172,.1)">
+          <span class="project-icon" aria-hidden="true">×</span>
+          <h3>Math Facts</h3>
+          <p>Build speed and confidence with focused practice that helps math facts stick.</p>
+          <span class="card-link">Practice math facts <span class="arrow" aria-hidden="true">→</span></span>
+        </a>
+
+        <a class="project-card" href="/pixelit/" style="--glow:rgba(240,171,252,.17);--icon-color:#f0abfc;--icon-bg:rgba(240,171,252,.1)">
+          <span class="project-icon" aria-hidden="true">▦</span>
+          <h3>Pixelit</h3>
+          <p>Reveal the hidden picture one piece at a time as you work through the challenge.</p>
+          <span class="card-link">Try Pixelit <span class="arrow" aria-hidden="true">→</span></span>
+        </a>
+      </div>
+      <p class="coming-note">Some game links are still being set up. Check back as new activities are added.</p>
+    </section>
+
+    <section class="wrap bottom-band" aria-label="LudMath purpose">
+      <div>
+        <h2>Curiosity is a good place to start.</h2>
+        <p>Learn something. Try it out. Find out what comes next.</p>
+      </div>
+      <a class="button button-secondary" href="#projects">Choose a challenge <span aria-hidden="true">↗</span></a>
+    </section>
+  </main>
+
+  <footer>
+    <div class="wrap footer-inner">
+      <span>© <span id="year">2026</span> LudMath</span>
+      <span>Learn · Understand · Discover</span>
+    </div>
+  </footer>
+  <script>
+    document.getElementById('year').textContent = new Date().getFullYear();
+  </script>
+</body>
+</html>
