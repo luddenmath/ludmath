@@ -1605,12 +1605,14 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   function updateStatsDisplay() {
+    const statSet = getPracticeStats();
+
     const values = {
-      "lm-current-streak": stats.currentStreak,
-      "lm-best-streak": stats.bestStreak,
-      "lm-correct": stats.totalCorrect,
-      "lm-incorrect": stats.totalIncorrect,
-      "lm-attempted": stats.totalAttempted
+      "lm-current-streak": statSet.currentStreak,
+      "lm-best-streak": statSet.bestStreak,
+      "lm-correct": statSet.totalCorrect,
+      "lm-incorrect": statSet.totalIncorrect,
+      "lm-attempted": statSet.totalAttempted
     };
 
     Object.entries(values).forEach(([id, value]) => {
