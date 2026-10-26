@@ -36,6 +36,7 @@ document.addEventListener("DOMContentLoaded", () => {
      GLOBAL STATE
      ========================================================== */
 
+  // Overall statistics across all practice types.
   const stats = {
     currentStreak: 0,
     bestStreak: 0,
@@ -43,6 +44,36 @@ document.addEventListener("DOMContentLoaded", () => {
     totalIncorrect: 0,
     totalAttempted: 0
   };
+
+  // Independent statistics for each practice configuration.
+  const practiceStats = Object.create(null);
+
+  function getPracticeKey() {
+    const operations = state.section === "arithmetic"
+      ? [...state.selectedOperations].sort().join(",")
+      : "n/a";
+
+    const signs =
+      `${state.allowPositive ? "P" : ""}${state.allowNegative ? "N" : ""}`;
+
+    return `${state.section}:${state.category}:ops=${operations}:signs=${signs}`;
+  }
+
+  function getPracticeStats() {
+    const key = getPracticeKey();
+
+    if (!practiceStats[key]) {
+      practiceStats[key] = {
+        currentStreak: 0,
+        bestStreak: 0,
+        totalCorrect: 0,
+        totalIncorrect: 0,
+        totalAttempted: 0
+      };
+    }
+
+    return practiceStats[key];
+  }
 
   const state = {
     page: "home",
@@ -867,40 +898,40 @@ document.addEventListener("DOMContentLoaded", () => {
     `;
   }
 
-  function statsMarkup() {
+  function statsMarkup(statSet = stats) {
     return `
       <div class="lm-stat-grid">
         <div class="lm-stat">
           <span class="lm-stat-value" id="lm-current-streak">
-            ${stats.currentStreak}
+            ${statSet.currentStreak}
           </span>
           <span class="lm-stat-label">Current Streak</span>
         </div>
 
         <div class="lm-stat">
           <span class="lm-stat-value" id="lm-best-streak">
-            ${stats.bestStreak}
+            ${statSet.bestStreak}
           </span>
           <span class="lm-stat-label">Best Streak</span>
         </div>
 
         <div class="lm-stat">
           <span class="lm-stat-value" id="lm-correct">
-            ${stats.totalCorrect}
+            ${statSet.totalCorrect}
           </span>
           <span class="lm-stat-label">Total Correct</span>
         </div>
 
         <div class="lm-stat">
           <span class="lm-stat-value" id="lm-incorrect">
-            ${stats.totalIncorrect}
+            ${statSet.totalIncorrect}
           </span>
           <span class="lm-stat-label">Total Incorrect</span>
         </div>
 
         <div class="lm-stat">
           <span class="lm-stat-value" id="lm-attempted">
-            ${stats.totalAttempted}
+            ${statSet.totalAttempted}
           </span>
           <span class="lm-stat-label">Total Attempted</span>
         </div>
@@ -1401,7 +1432,7 @@ document.addEventListener("DOMContentLoaded", () => {
           <h2 class="lm-section-title" style="margin-top:0">
             Your statistics
           </h2>
-          ${statsMarkup()}
+          ${statsMarkup(getPracticeStats())}
         </div>
 
         <div class="lm-actions" style="justify-content:center">
@@ -1464,11 +1495,15 @@ document.addEventListener("DOMContentLoaded", () => {
       return;
     }
 
-    // Each submitted answer is counted exactly once.
+    // Count each submitted answer in both the overall tracker
+    // and the current practice's independent tracker.
     state.locked = true;
     state.sessionAttempted++;
 
+    const practiceTracker = getPracticeStats();
+
     stats.totalAttempted++;
+    practiceTracker.totalAttempted++;
 
     const isCorrect =
       Math.abs(userAnswer - state.question.answer) < 0.0000001;
@@ -1480,6 +1515,30 @@ document.addEventListener("DOMContentLoaded", () => {
         stats.bestStreak,
         stats.currentStreak
       );
+
+      practiceTracker.totalCorrect++;
+      practiceTracker.currentStreak++;
+      practiceTracker.bestStreak = Math.max(
+        practiceTracker.bestStreak,
+        practiceTracker.currentStreak
+      );
+
+      state.sessionCorrect++;
+
+      feedback.textContent = "Correct!";
+      feedback.className = "lm-feedback correct";
+    } else {
+      stats.totalIncorrect++;
+      stats.currentStreak = 0;
+
+      practiceTracker.totalIncorrect++;
+      practiceTracker.currentStreak = 0;
+
+      feedback.textContent =
+        `Incorrect. The correct answer is ${state.question.answer}.`;
+
+      feedback.className = "lm-feedback incorrect";
+    }
 
       state.sessionCorrect++;
 
