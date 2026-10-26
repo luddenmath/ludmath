@@ -1523,22 +1523,7 @@ document.addEventListener("DOMContentLoaded", () => {
         practiceTracker.currentStreak
       );
 
-      state.sessionCorrect++;
-
-      feedback.textContent = "Correct!";
-      feedback.className = "lm-feedback correct";
-    } else {
-      stats.totalIncorrect++;
-      stats.currentStreak = 0;
-
-      practiceTracker.totalIncorrect++;
-      practiceTracker.currentStreak = 0;
-
-      feedback.textContent =
-        `Incorrect. The correct answer is ${state.question.answer}.`;
-
-      feedback.className = "lm-feedback incorrect";
-    }
+    
 
       state.sessionCorrect++;
 
